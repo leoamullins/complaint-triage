@@ -1,0 +1,28 @@
+[project]
+name = "complaint"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Leo Mullins", email = "leomullins18@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=3.0.6",
+    "psycopg2-binary>=2.9.13",
+    "python-dotenv>=1.2.4",
+    "sqlalchemy>=2.1.4",
+]
+
+[project.scripts]
+complaint = "complaint:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+]

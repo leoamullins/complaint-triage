@@ -39,8 +39,8 @@ def tau_sweep(logits, y, log_ratio, taus=(0, 0.25, 0.5, 0.75, 1.0, 1.25)):
     }
 
 
-def save_prior_adjustment(log_ratio, tau, model_dir, best_tau=None):
-    d = {"log_ratio": log_ratio.tolist(), "tau": tau}
+def save_prior_adjustment(log_ratio, tau, model_dir, best_tau=None, temperature=1.0):
+    d = {"log_ratio": log_ratio.tolist(), "tau": tau, "temperature": temperature}
     if best_tau is not None:
         d["best_tau"] = best_tau
     Path(model_dir, "prior_adjustment.json").write_text(json.dumps(d, indent=2))
@@ -48,4 +48,5 @@ def save_prior_adjustment(log_ratio, tau, model_dir, best_tau=None):
 
 def load_prior_adjustment(model_dir):
     d = json.loads(Path(model_dir, "prior_adjustment.json").read_text())
-    return np.array(d["log_ratio"]), d["tau"]
+    # older models were saved before temperature scaling: T = 1 leaves them unchanged
+    return np.array(d["log_ratio"]), d["tau"], d.get("temperature", 1.0)

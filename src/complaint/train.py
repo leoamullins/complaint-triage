@@ -19,6 +19,7 @@ from complaint.evaluation import (
     tau_sweep,
     save_prior_adjustment,
 )
+from complaint.calibration import fit_temperature
 
 
 class OrderedEvalTrainer(Trainer):
@@ -47,7 +48,9 @@ def train(cfg):
     steps_per_epoch = math.ceil(
         len(ds["train"]) / (cfg.training.batch_size * cfg.training.grad_accum)
     )
-    warmup_steps = math.ceil(steps_per_epoch * cfg.training.epochs * cfg.training.warmup_frac)
+    warmup_steps = math.ceil(
+        steps_per_epoch * cfg.training.epochs * cfg.training.warmup_frac
+    )
     t = cfg.training
     bf16 = t.bf16 and torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     if t.bf16 and not bf16:
@@ -115,11 +118,16 @@ def train(cfg):
     best_tau = max(sweep, key=sweep.get)
     print(f"best tau on held-out val: {best_tau} (config tau: {cfg.evaluation.tau})")
 
+    T = fit_temperature(val_out.predictions, val_y, log_ratio, tau=cfg.evaluation.tau)
+    print(f"temperature on val: {T:.3f}")
+
     # save
     model_dir = out / "model"
     trainer.save_model(str(model_dir))
     tok.save_pretrained(str(model_dir))
-    save_prior_adjustment(log_ratio, cfg.evaluation.tau, model_dir, best_tau=best_tau)
+    save_prior_adjustment(
+        log_ratio, cfg.evaluation.tau, model_dir, best_tau=best_tau, temperature=T
+    )
     print(f"saved model to {model_dir}")
 
     return trainer, dfs, ds, log_ratio

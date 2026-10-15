@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.utils.data import SequentialSampler
 from sklearn.model_selection import train_test_split
 from transformers import Trainer, TrainingArguments, DataCollatorWithPadding, set_seed
 from transformers.trainer_utils import get_last_checkpoint
@@ -18,6 +19,16 @@ from complaint.evaluation import (
     tau_sweep,
     save_prior_adjustment,
 )
+
+
+class OrderedEvalTrainer(Trainer):
+    """
+    group_by_length also reorders eval/predict batches in transformers 5,
+    which breaks the row order of trainer.predict outputs; keep eval sequential
+    """
+
+    def _get_eval_sampler(self, eval_dataset):
+        return SequentialSampler(eval_dataset)
 
 
 def train(cfg):
@@ -64,7 +75,7 @@ def train(cfg):
     )
 
     # train
-    trainer = Trainer(
+    trainer = OrderedEvalTrainer(
         model=model,
         args=args,
         train_dataset=ds["train"],

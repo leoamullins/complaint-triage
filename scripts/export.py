@@ -1,10 +1,10 @@
-from pathlib import Path
-
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-ENGINE = create_engine("postgresql:///complaints?host=/tmp")
-OUT_DIR = Path("/mnt/c/Users/leomu/Downloads/complaint-triage")
+from complaint.config import default_data_dir
+from complaint.db import get_engine
+
+OUT_DIR = default_data_dir()
 TRAIN_CAP = 15000
 EVAL_N = 20000
 SEED = 0.42
@@ -39,7 +39,7 @@ def sample_eval(conn, split, n):
 
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    with ENGINE.connect() as conn:
+    with get_engine().connect() as conn:
         conn.execute(text("SELECT setseed(:s)"), {"s": SEED})
 
         splits = {

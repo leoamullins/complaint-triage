@@ -1,12 +1,25 @@
+import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
+
+load_dotenv()
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def default_data_dir():
+    """
+    DATA_DIR from the environment or .env, else data/ in the repo
+    """
+    return Path(os.environ.get("DATA_DIR", REPO_ROOT / "data"))
 
 
 @dataclass
 class DataConfig:
-    data_dir: str = "data"
+    data_dir: str | None = None  # None -> default_data_dir()
     text_col: str = "text"
     label_col: str = "label"
     train_limit: int | None = None

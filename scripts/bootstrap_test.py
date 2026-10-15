@@ -1,5 +1,4 @@
 # paired bootstrap of test macro-F1: TF-IDF baseline vs fine-tuned RoBERTa
-from pathlib import Path
 import time
 
 import numpy as np
@@ -8,10 +7,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from complaint.bootstrap import macro_f1, paired_bootstrap
+from complaint.config import REPO_ROOT, default_data_dir
 
-DATA = Path("/mnt/c/Users/leomu/Downloads/complaint-triage")
+DATA = default_data_dir()
 # downloaded from complaint-outputs/roberta-512 on Drive
-ROBERTA_PREDS = Path(__file__).resolve().parents[1] / "data" / "preds_test.parquet"
+ROBERTA_PREDS = REPO_ROOT / "data" / "preds_test.parquet"
 BASELINE_TAU = 0.5  # chosen on val in 02_baseline.ipynb
 
 assert ROBERTA_PREDS.exists(), f"download preds_test.parquet from Drive to {ROBERTA_PREDS}"

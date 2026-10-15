@@ -1,29 +1,38 @@
 [project]
 name = "complaint"
 version = "0.1.0"
-description = "Add your description here"
+description = "Classifies US consumer finance complaints by product with calibrated confidence for triage"
 readme = "README.md"
 authors = [
     { name = "Leo Mullins", email = "leomullins18@gmail.com" }
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "accelerate>=1.1.0",
-    "datasets>=5.1.0",
-    "matplotlib>=3.11.2",
     "pandas>=3.0.6",
-    "psycopg2-binary>=2.9.13",
-    "psycopg[binary]>=3.3.6",
     "pyarrow>=26.0.0",
     "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.2",
     "scikit-learn>=1.9.1",
-    "sqlalchemy>=2.1.4",
+    "scipy>=1.16.0",
+]
+
+[project.optional-dependencies]
+train = [
+    "accelerate>=1.1.0",
+    "datasets>=5.1.0",
     "torch>=2.14.1",
     "transformers>=5.20.0",
 ]
-
-[project.scripts]
-complaint = "complaint:main"
+db = [
+    "psycopg[binary]>=3.3.6",
+    "sqlalchemy>=2.1.4",
+]
+serve = [
+    "fastapi>=0.115.0",
+    "torch>=2.14.1",
+    "transformers>=5.20.0",
+    "uvicorn>=0.32.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
@@ -33,4 +42,5 @@ build-backend = "uv_build"
 dev = [
     "ipykernel>=7.4.0",
     "jupyter>=1.1.1",
+    "matplotlib>=3.11.2",
 ]

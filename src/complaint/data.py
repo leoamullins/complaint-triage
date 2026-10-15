@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 from datasets import Dataset
 
+from complaint.config import default_data_dir
+
 SPLITS = ("train", "val", "test")
 
 
@@ -10,7 +12,7 @@ def load_splits(cfg, seed=42):
     """
     read train/val/test parquet files
     """
-    data_dir = Path(cfg.data_dir)
+    data_dir = Path(cfg.data_dir) if cfg.data_dir else default_data_dir()
     dfs = {s: pd.read_parquet(data_dir / f"{s}.parquet") for s in SPLITS}
 
     if cfg.train_limit is not None:

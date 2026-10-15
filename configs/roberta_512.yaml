@@ -1,0 +1,28 @@
+# the run behind the reported results: test macro-F1 0.753 (tau 0.75)
+run_name: roberta-512
+seed: 42
+output_dir: outputs/roberta_512
+
+data:
+  text_col: text
+  label_col: label
+  train_limit: null
+
+model:
+  name: roberta-base
+  max_len: 512
+
+training:
+  lr: 2.0e-5
+  epochs: 2
+  batch_size: 32
+  eval_batch_size: 64
+  weight_decay: 0.01
+  warmup_frac: 0.06
+  bf16: true
+  group_by_length: true
+  grad_accum: 1
+
+evaluation:
+  tau: 0.75
+  prior_source: val

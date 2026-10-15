@@ -6,55 +6,56 @@ import yaml
 
 @dataclass
 class DataConfig:
-    data_dir = "data"
-    text_col = "text"
-    label_col = "label"
-    train_limit = None
+    data_dir: str = "data"
+    text_col: str = "text"
+    label_col: str = "label"
+    train_limit: int | None = None
 
 
 @dataclass
 class ModelConfig:
-    name = "roberta-base"
-    max_len = 512
+    name: str = "roberta-base"
+    max_len: int = 512
 
 
 @dataclass
 class TrainingConfig:
-    lr = 2e-5
-    epochs = 2
-    batch_size = 32
-    eval_batch_size = 64
-    weight_decay = 0.01
-    warmup_frac = 0.06
-    bf16 = True
-    group_by_length = True
-    grad_accum = 1
+    lr: float = 2e-5
+    epochs: int = 2
+    batch_size: int = 32
+    eval_batch_size: int = 64
+    weight_decay: float = 0.01
+    warmup_frac: float = 0.06
+    bf16: bool = True
+    group_by_length: bool = True
+    grad_accum: int = 1
 
 
 @dataclass
 class EvalConfig:
-    tau = 1.0
-    prior_source = "val"
+    tau: float = 1.0
+    prior_source: str = "val"
 
 
 @dataclass
 class Config:
-    run_name = "roberta-512"
-    seed = 42
-    output_dir = "outputs/roberta_512"
-    data = field(default_factory=DataConfig)
-    model = field(default_factory=ModelConfig)
-    training = field(default_factory=TrainingConfig)
-    evaluation = field(default_factory=EvalConfig)
+    run_name: str = "roberta-512"
+    seed: int = 42
+    output_dir: str = "outputs/roberta_512"
+    data: DataConfig = field(default_factory=DataConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig)
+    evaluation: EvalConfig = field(default_factory=EvalConfig)
 
 
 def load_config(path):
     raw = yaml.safe_load(Path(path).read_text()) or {}
+    default = Config()
 
     return Config(
-        run_name=raw.get("run_name", "run"),
-        seed=raw.get("seed", 42),
-        output_dir=raw.get("output_dir", "outputs/run"),
+        run_name=raw.get("run_name", default.run_name),
+        seed=raw.get("seed", default.seed),
+        output_dir=raw.get("output_dir", default.output_dir),
         data=DataConfig(**raw.get("data", {})),
         model=ModelConfig(**raw.get("model", {})),
         training=TrainingConfig(**raw.get("training", {})),

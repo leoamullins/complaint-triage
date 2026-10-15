@@ -1,0 +1,29 @@
+# quick end-to-end check of the training pipeline, not a real run
+run_name: smoke
+seed: 42
+output_dir: outputs/smoke
+
+data:
+  data_dir: /mnt/c/Users/leomu/Downloads/complaint-triage
+  text_col: text
+  label_col: label
+  train_limit: 500
+
+model:
+  name: distilroberta-base
+  max_len: 128
+
+training:
+  lr: 5.0e-5
+  epochs: 1
+  batch_size: 16
+  eval_batch_size: 64
+  weight_decay: 0.01
+  warmup_frac: 0.06
+  bf16: false
+  group_by_length: true
+  grad_accum: 1
+
+evaluation:
+  tau: 1.0
+  prior_source: val

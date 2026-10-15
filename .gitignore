@@ -22,3 +22,13 @@ data/
 .vscode/
 .idea/
 .DS_Store
+
+# Training outputs / model artifacts
+outputs/
+checkpoints/
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+wandb/
+runs/

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from transformers import Trainer, TrainingArguments, DataCollatorWithPadding, set_seed
+from transformers.trainer_utils import get_last_checkpoint
 
 from complaint.config import load_config, save_config
 from complaint.data import prepare
@@ -71,7 +72,12 @@ def train(cfg):
         data_collator=DataCollatorWithPadding(tok),
         compute_metrics=compute_metrics,
     )
-    trainer.train()
+    # pick up from the last epoch checkpoint if a previous run was cut off
+    ckpt_dir = Path(args.output_dir)
+    last_ckpt = get_last_checkpoint(str(ckpt_dir)) if ckpt_dir.is_dir() else None
+    if last_ckpt:
+        print(f"resuming from {last_ckpt}")
+    trainer.train(resume_from_checkpoint=last_ckpt)
 
     # prior correction
     n_classes = len(label2id)

@@ -126,7 +126,12 @@ def train(cfg):
     trainer.save_model(str(model_dir))
     tok.save_pretrained(str(model_dir))
     save_prior_adjustment(
-        log_ratio, cfg.evaluation.tau, model_dir, best_tau=best_tau, temperature=T
+        log_ratio,
+        cfg.evaluation.tau,
+        model_dir,
+        best_tau=best_tau,
+        temperature=T,
+        review_threshold=cfg.evaluation.review_threshold,
     )
     print(f"saved model to {model_dir}")
 

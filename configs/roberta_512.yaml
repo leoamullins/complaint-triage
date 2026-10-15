@@ -26,3 +26,4 @@ training:
 evaluation:
   tau: 0.75
   prior_source: val
+  review_threshold: 0.8  # chosen on val: 19% to a human, 95% auto-routed accuracy

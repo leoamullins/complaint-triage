@@ -48,6 +48,7 @@ class TrainingConfig:
 class EvalConfig:
     tau: float = 1.0
     prior_source: str = "val"
+    review_threshold: float | None = None  # confidence below this goes to a human
 
 
 @dataclass

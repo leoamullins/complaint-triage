@@ -46,3 +46,24 @@ def reliability_table(probs, y, n_bins=20):
                 }
             )
     return rows
+
+
+def routing_table(probs, y, thresholds=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95)):
+    """
+    send predictions below each confidence threshold to a human; report the
+    share reviewed and the accuracy of the auto-routed rest
+    """
+    conf = probs.max(1)
+    correct = probs.argmax(1) == y
+    rows = []
+    for t in thresholds:
+        auto = conf >= t
+        rows.append(
+            {
+                "threshold": t,
+                "human_share": 1 - auto.mean(),
+                "auto_accuracy": correct[auto].mean() if auto.any() else float("nan"),
+                "errors_caught": (~correct & ~auto).sum() / max((~correct).sum(), 1),
+            }
+        )
+    return rows

@@ -39,6 +39,12 @@ def test_classify_returns_one_result_per_text_in_order(client):
     for x in results:
         assert 0 <= x["confidence"] <= 1
         assert x["route"] in ("auto", "human")
+        # top candidates: best first, led by the predicted product
+        probs = [c["probability"] for c in x["top"]]
+        assert len(x["top"]) == 3
+        assert x["top"][0]["product"] == x["product"]
+        assert probs == sorted(probs, reverse=True)
+        assert probs[0] == x["confidence"]
 
 
 def test_empty_list_is_rejected(client):
@@ -53,7 +59,8 @@ def test_missing_texts_field_is_rejected(client):
     assert client.post("/classify", json={"text": "singular"}).status_code == 422
 
 
-def test_root_redirects_to_docs(client):
-    r = client.get("/", follow_redirects=False)
-    assert r.status_code == 307
-    assert r.headers["location"] == "/docs"
+def test_root_serves_the_page(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    assert "/classify" in r.text

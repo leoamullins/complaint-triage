@@ -152,9 +152,12 @@ curl -X POST http://127.0.0.1:8000/classify \
 ```
 
 ```json
-{"results": [{"product": "Debt collection", "confidence": 0.955, "route": "auto"}]}
+{"results": [{"product": "Debt collection", "confidence": 0.955, "route": "auto",
+  "top": [{"product": "Debt collection", "probability": 0.955},
+          {"product": "Credit reporting", "probability": 0.02},
+          {"product": "Personal/payday loan", "probability": 0.01}]}]}
 ```
 
-`route` is `human` when confidence is below the 0.80 threshold. `GET /health` returns the class labels, and interactive docs are at `/docs`.
+`route` is `human` when confidence is below the 0.80 threshold, and `top` lists the three most likely products. `GET /health` returns the class labels. A simple page at `/` classifies one complaint at a time, and interactive API docs are at `/docs`.
 
 Tests: `uv run pytest`, also run by GitHub Actions on every push. The model tests skip if the model is not available; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.

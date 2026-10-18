@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complaint Triage</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #666; --border: #ddd;
+    --bar: #3b6fd4; --track: #eef1f6;
+    --auto: #1d7a46; --auto-bg: #e6f4ec; --human: #9a5b00; --human-bg: #fdf1dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161718; --fg: #e8e8e8; --muted: #9a9a9a; --border: #333;
+      --bar: #6b95e8; --track: #26292e;
+      --auto: #6fd39a; --auto-bg: #17301f; --human: #f0b45a; --human-bg: #33270f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.5 system-ui, -apple-system, sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  textarea {
+    width: 100%; min-height: 120px; padding: 10px; font: inherit;
+    color: var(--fg); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; resize: vertical;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 24px; }
+  button {
+    font: inherit; font-size: 14px; padding: 6px 12px; cursor: pointer;
+    color: var(--fg); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  button.primary { background: var(--bar); border-color: var(--bar); color: #fff; font-size: 16px; padding: 8px 18px; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .muted { color: var(--muted); font-size: 14px; }
+  #result { display: none; border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .product { font-size: 20px; font-weight: 600; }
+  .badge { font-size: 14px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .badge.auto { color: var(--auto); background: var(--auto-bg); }
+  .badge.human { color: var(--human); background: var(--human-bg); }
+  .cand { display: grid; grid-template-columns: 1fr 2fr 3.5em; gap: 10px; align-items: center; margin-top: 10px; font-size: 14px; }
+  .track { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; background: var(--bar); }
+  .pct { text-align: right; font-variant-numeric: tabular-nums; }
+  #error { color: var(--human); }
+  footer { margin-top: 32px; font-size: 14px; color: var(--muted); }
+  a { color: var(--bar); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Complaint Triage</h1>
+  <p>Paste a US consumer finance complaint. The model picks the product it is about, and sends it to a person if it is less than 80% sure.</p>
+
+  <textarea id="text" placeholder="Describe the problem in your own words..."></textarea>
+  <div class="row">
+    <button class="primary" id="go">Classify</button>
+    <span class="muted">Try:</span>
+    <button data-example="My mortgage servicer lost my payment and then charged me a late fee.">Mortgage</button>
+    <button data-example="There is an account on my credit report that is not mine and the bureau refuses to remove it.">Credit report</button>
+    <button data-example="My car was repossessed even though I was only a few days late on my payment.">Car loan</button>
+    <button data-example="My credit card company closed my account and now my score dropped.">Unclear case</button>
+  </div>
+
+  <p id="error"></p>
+
+  <section id="result">
+    <div class="head">
+      <span class="product" id="product"></span>
+      <span class="badge" id="route"></span>
+    </div>
+    <div id="cands"></div>
+  </section>
+
+  <footer>
+    Fine-tuned RoBERTa on CFPB complaints: test macro-F1 0.753, calibrated confidence.
+    Texts over about 400 words are cut off.
+    <a href="/docs">API docs</a> ·
+    <a href="https://github.com/leoamullins/complaint-triage">Code</a>
+  </footer>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const pct = (x) => Math.round(x * 100) + "%";
+
+  async function classify() {
+    const text = $("text").value.trim();
+    if (!text) return;
+    $("go").disabled = true;
+    $("go").textContent = "Classifying...";
+    $("error").textContent = "";
+    try {
+      const r = await fetch("/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texts: [text] }),
+      });
+      if (!r.ok) throw new Error("request failed (" + r.status + ")");
+      show((await r.json()).results[0]);
+    } catch (e) {
+      $("error").textContent = "Something went wrong: " + e.message;
+    } finally {
+      $("go").disabled = false;
+      $("go").textContent = "Classify";
+    }
+  }
+
+  function show(res) {
+    $("product").textContent = res.product;
+    const auto = res.route === "auto";
+    $("route").textContent = auto ? "Route automatically" : "Send to a person";
+    $("route").className = "badge " + res.route;
+    $("cands").innerHTML = "";
+    for (const c of res.top) {
+      const row = document.createElement("div");
+      row.className = "cand";
+      row.innerHTML = '<span></span><div class="track"><div class="fill"></div></div><span class="pct"></span>';
+      row.children[0].textContent = c.product;
+      row.querySelector(".fill").style.width = pct(c.probability);
+      row.children[2].textContent = pct(c.probability);
+      $("cands").appendChild(row);
+    }
+    $("result").style.display = "block";
+  }
+
+  $("go").addEventListener("click", classify);
+  for (const b of document.querySelectorAll("[data-example]")) {
+    b.addEventListener("click", () => { $("text").value = b.dataset.example; classify(); });
+  }
+</script>
+</body>
+</html>

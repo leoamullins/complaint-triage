@@ -1,9 +1,10 @@
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from complaint.config import REPO_ROOT
@@ -31,7 +32,7 @@ app = FastAPI(title="Complaint triage", lifespan=lifespan)
 
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse("/docs")
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
 
 
 @app.get("/health")
@@ -43,10 +44,16 @@ class ClassifyRequest(BaseModel):
     texts: list[str] = Field(min_length=1, max_length=64)
 
 
+class Candidate(BaseModel):
+    product: str
+    probability: float
+
+
 class Prediction(BaseModel):
     product: str
     confidence: float
     route: Literal["auto", "human"]
+    top: list[Candidate]
 
 
 class ClassifyResponse(BaseModel):

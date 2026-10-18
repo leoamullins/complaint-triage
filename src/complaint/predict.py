@@ -23,12 +23,19 @@ class Model:
     device: str
 
 
+def probabilities(logits, log_ratio, tau, temperature):
+    """
+    raw logits (n, n_classes) -> prior-adjusted, temperature-scaled probabilities
+    """
+    logits = corrected_logits(logits, log_ratio, temperature=temperature, tau=tau)
+    return softmax(logits, axis=1)
+
+
 def postprocess(logits, log_ratio, tau, temperature, threshold):
     """
     raw logits (n, n_classes) -> predicted ids, confidences, routes
     """
-    logits = corrected_logits(logits, log_ratio, temperature=temperature, tau=tau)
-    probs = softmax(logits, axis=1)
+    probs = probabilities(logits, log_ratio, tau, temperature)
 
     pred = probs.argmax(axis=1)
     conf = probs.max(axis=1)
@@ -63,9 +70,10 @@ def load(model_dir, device=None):
     )
 
 
-def predict(model, texts, batch_size=32, max_len=512):
+def predict(model, texts, batch_size=32, max_len=512, top_k=3):
     """
-    texts -> one {'product', 'confidence', 'route'} dict per text, in input order
+    texts -> one {'product', 'confidence', 'route', 'top'} dict per text, in input order;
+    'top' lists the top_k products with their probabilities
     """
     if not texts:
         return []
@@ -94,8 +102,19 @@ def predict(model, texts, batch_size=32, max_len=512):
         threshold=model.threshold,
     )
 
+    probs = probabilities(arr, model.log_ratio, model.tau, model.temperature)
+
     results = []
-    for p, c, r in zip(pred, conf, route):
-        res = {"product": model.labels[p], "confidence": float(c), "route": str(r)}
+    for p, c, r, row in zip(pred, conf, route, probs):
+        top = [
+            {"product": model.labels[i], "probability": float(row[i])}
+            for i in np.argsort(-row)[:top_k]
+        ]
+        res = {
+            "product": model.labels[p],
+            "confidence": float(c),
+            "route": str(r),
+            "top": top,
+        }
         results.append(res)
     return results

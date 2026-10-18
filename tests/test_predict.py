@@ -81,7 +81,7 @@ def test_output_shape_and_order(model):
     ]
     out = predict(model, texts, batch_size=1)
     assert len(out) == 2
-    assert set(out[0]) == {"product", "confidence", "route"}
+    assert set(out[0]) == {"product", "confidence", "route", "top"}
     assert out[0]["product"] == "Debt collection"
     assert out[1]["product"] == "Credit reporting"
     assert all(isinstance(r["confidence"], float) for r in out)

@@ -16,7 +16,7 @@ Fine-tuned RoBERTa-base on CFPB complaint narratives: test macro-F1 0.753, expec
 
 ## Use it
 
-Interactive docs: `/docs`
+Open the Space to classify a complaint in the browser. Interactive API docs are at `/docs`.
 
 ```bash
 curl -X POST https://leoamullins-complaint-triage.hf.space/classify \
@@ -25,7 +25,10 @@ curl -X POST https://leoamullins-complaint-triage.hf.space/classify \
 ```
 
 ```json
-{"results": [{"product": "Debt collection", "confidence": 0.955, "route": "auto"}]}
+{"results": [{"product": "Debt collection", "confidence": 0.955, "route": "auto",
+  "top": [{"product": "Debt collection", "probability": 0.955},
+          {"product": "Credit reporting", "probability": 0.02},
+          {"product": "Personal/payday loan", "probability": 0.01}]}]}
 ```
 
 `POST /classify` takes 1 to 64 texts. `GET /health` returns the class labels.

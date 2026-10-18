@@ -81,7 +81,7 @@ Reviewing the least confident quarter of complaints catches two-thirds of the er
 
 ## Status
 
-Done: data pipeline, baseline, fine-tuned classifier, calibration and routing. Next: an inference API and deployment, then discovering emerging issues in the complaints over time and turning the findings into recommendations.
+Done: data pipeline, baseline, fine-tuned classifier, calibration and routing, inference API and Docker image. Next: deployment, then discovering emerging issues in the complaints over time and turning the findings into recommendations.
 
 ## Repo layout
 
@@ -95,6 +95,9 @@ src/complaint/
   evaluation.py   metrics and prior adjustment
   calibration.py  ECE, temperature scaling, routing table
   bootstrap.py    paired bootstrap
+  predict.py      loading a saved model and classifying texts
+  api.py          FastAPI service
+tests/        predict and API tests
 configs/      roberta_512.yaml (reported run), smoke.yaml (quick check)
 notebooks/    01 EDA, 02 baseline, 03 RoBERTa (Colab), 04 calibration
 figures/      figures used in this README
@@ -116,3 +119,37 @@ uv run python scripts/bootstrap_script.py   # needs data/preds_test.parquet
 `bootstrap_script.py` compares against RoBERTa's test predictions, which the "Test set" cell of `notebooks/03_roberta.ipynb` saves; copy `preds_test.parquet` into `data/`.
 
 To check the pipeline quickly on CPU, run training with `configs/smoke.yaml` instead.
+
+## Serve
+
+A FastAPI service (`src/complaint/api.py`) loads the model once at startup and classifies complaints with the same prior adjustment, temperature and routing threshold as the results above. It reads the model from `MODEL_DIR`, by default `outputs/roberta_512/model`.
+
+```bash
+uv sync --extra serve
+uv run uvicorn complaint.api:app --reload
+```
+
+Or in Docker, with the model mounted from the host rather than built into the image:
+
+```bash
+docker build -t complaint-triage .
+docker run --rm -p 8000:8000 \
+  -v "$PWD/outputs/roberta_512/model:/model:ro" \
+  complaint-triage
+```
+
+`POST /classify` takes 1 to 64 texts and returns one result per text, in order:
+
+```bash
+curl -X POST http://127.0.0.1:8000/classify \
+  -H "Content-Type: application/json" \
+  -d '{"texts": ["They keep calling me about a debt I already paid off years ago."]}'
+```
+
+```json
+{"results": [{"product": "Debt collection", "confidence": 0.955, "route": "auto"}]}
+```
+
+`route` is `human` when confidence is below the 0.80 threshold. `GET /health` returns the class labels, and interactive docs are at `/docs`.
+
+Tests: `uv run pytest`. The model tests skip if the model is not downloaded; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.

@@ -23,7 +23,7 @@ class Model:
 
 def postprocess(logits, log_ratio, tau, temperature, threshold):
     """
-    raw logits (n, n_classes) - > predicted ids, confidences, routes
+    raw logits (n, n_classes) -> predicted ids, confidences, routes
     """
     logits = corrected_logits(logits, log_ratio, temperature=temperature, tau=tau)
     probs = softmax(logits, axis=1)

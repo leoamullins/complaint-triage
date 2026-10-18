@@ -41,7 +41,7 @@ The training sample is balanced, but real complaints are not: credit reporting i
 | TF-IDF + logistic regression | 0.671 | 0.710 (τ = 0.5) | 0.724 [0.711, 0.737] |
 | RoBERTa-base, 512 tokens, 2 epochs | 0.691 | 0.738 (τ = 0.75) | **0.753** [0.740, 0.766] |
 
-Brackets are 95% confidence intervals from a paired bootstrap over test complaints (2,000 resamples, `scripts/bootstrap_test.py`). RoBERTa's gain is +2.9 points [+1.8, +4.0], and it scores below the baseline in none of the resamples.
+Brackets are 95% confidence intervals from a paired bootstrap over test complaints (2,000 resamples, `scripts/bootstrap_script.py`). RoBERTa's gain is +2.9 points [+1.8, +4.0], and it scores below the baseline in none of the resamples.
 
 On test, RoBERTa beats the baseline on all ten classes (accuracy 0.850 vs 0.838). The largest gains are on the hardest classes: personal/payday loans (F1 0.58 → 0.66) and "Other" (0.28 → 0.36). Credit reporting (0.91) and mortgage (0.90) are easiest to classify.
 
@@ -110,9 +110,9 @@ scripts/download_narratives.sh       # narrative exports; complaints.csv goes in
 scripts/build_db.sh                  # Postgres pipeline
 uv run python scripts/export.py      # train/val/test parquet files into DATA_DIR
 uv run python -m complaint.train --config configs/roberta_512.yaml   # needs a GPU
-uv run python scripts/bootstrap_test.py   # needs data/preds_test.parquet
+uv run python scripts/bootstrap_script.py   # needs data/preds_test.parquet
 ```
 
-`bootstrap_test.py` compares against RoBERTa's test predictions, which the "Test set" cell of `notebooks/03_roberta.ipynb` saves; copy `preds_test.parquet` into `data/`.
+`bootstrap_script.py` compares against RoBERTa's test predictions, which the "Test set" cell of `notebooks/03_roberta.ipynb` saves; copy `preds_test.parquet` into `data/`.
 
 To check the pipeline quickly on CPU, run training with `configs/smoke.yaml` instead.

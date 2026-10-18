@@ -51,3 +51,9 @@ def test_too_many_texts_is_rejected(client):
 
 def test_missing_texts_field_is_rejected(client):
     assert client.post("/classify", json={"text": "singular"}).status_code == 422
+
+
+def test_root_redirects_to_docs(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == "/docs"

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from complaint.config import REPO_ROOT
@@ -26,6 +27,11 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Complaint triage", lifespan=lifespan)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
 
 
 @app.get("/health")

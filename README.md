@@ -1,10 +1,22 @@
 # Complaint Triage
 
+[![tests](https://github.com/leoamullins/complaint-triage/actions/workflows/tests.yml/badge.svg)](https://github.com/leoamullins/complaint-triage/actions/workflows/tests.yml)
+[![demo](https://img.shields.io/badge/demo-Hugging%20Face%20Space-yellow)](https://huggingface.co/spaces/leoamullins/complaint-triage)
+[![model](https://img.shields.io/badge/model-complaint--roberta-blue)](https://huggingface.co/leoamullins/complaint-roberta)
+
 Classifies US consumer finance complaints by product, with confidence scores calibrated well enough to decide which complaints can be routed automatically and which need a person. Built on 3.85M complaint narratives from the CFPB Consumer Complaint Database.
 
-- **Test macro-F1 0.753** with fine-tuned RoBERTa, against 0.724 for a TF-IDF baseline (+2.9 points, 95% CI [+1.8, +4.0])
-- **Calibrated confidence:** expected calibration error 0.018 after temperature scaling
-- **Routing:** sending complaints below 0.80 confidence to a person reviews 25% of complaints, catches 68% of the model's errors, and leaves the rest 93.7% accurate
+| | |
+|---|---|
+| **Accuracy** | Test macro-F1 **0.753** with fine-tuned RoBERTa, against 0.724 for a TF-IDF baseline (+2.9 points, 95% CI [+1.8, +4.0]) |
+| **Calibration** | Expected calibration error **0.018** after temperature scaling |
+| **Routing** | Sending complaints below 0.80 confidence to a person reviews **25%** of complaints, catches **68%** of the model's errors, and leaves the rest **93.7%** accurate |
+
+**Try it:** [the demo](https://huggingface.co/spaces/leoamullins/complaint-triage) classifies a complaint in the browser, or see [Serve](#serve) to run the API locally.
+
+## Contents
+
+[Problem](#problem) · [Data](#data) · [Approach](#approach) · [Results](#results) · [Calibration and routing](#calibration-and-routing) · [Limitations](#limitations) · [Serve](#serve) · [Reproduce](#reproduce) · [Repo layout](#repo-layout)
 
 ## Problem
 
@@ -33,6 +45,19 @@ The training sample is balanced, but real complaints are not: credit reporting i
 2. **RoBERTa-base**, fine-tuned for 2 epochs with texts cut off at 512 tokens (`configs/roberta_512.yaml`, trained on a Colab A100 in `notebooks/03_roberta.ipynb`).
 3. **Prior adjustment:** the models train on balanced classes, so their scores are corrected towards the real class mix by adding τ · log(p_val / p_train) to each class score. τ is chosen on validation, then applied once to test.
 4. **Temperature scaling:** the adjusted scores are divided by one number T, fitted on validation to minimise log loss. It changes confidence only, never the predicted class.
+
+At prediction time, each complaint goes through the same steps (`src/complaint/predict.py`):
+
+```mermaid
+flowchart LR
+    A[Complaint text] --> B[RoBERTa<br/>10 class scores]
+    B --> C["+ τ · log prior ratio<br/>(τ = 0.75)"]
+    C --> D["÷ temperature<br/>(T = 1.13)"]
+    D --> E[softmax]
+    E --> F{confidence<br/>≥ 0.80?}
+    F -- yes --> G[Route automatically]
+    F -- no --> H[Send to a person]
+```
 
 ## Results
 
@@ -79,50 +104,11 @@ Reviewing the least confident quarter of complaints catches two-thirds of the er
 - **Exact duplicates only.** Near-duplicate template letters remain and may make some classes look easier than they are.
 - **τ from a noisy estimate.** Choosing τ on half of validation gave 0.25, against 0.75 on all of it; the rare classes make that estimate unstable.
 
-## Status
-
-Done: data pipeline, baseline, fine-tuned classifier, calibration and routing, inference API and Docker image. Next: deployment, then discovering emerging issues in the complaints over time and turning the findings into recommendations.
-
-## Repo layout
-
-```
-sql/          Postgres pipeline, run in order by scripts/build_db.sh
-scripts/      database build, sample export, bootstrap test
-src/complaint/
-  config.py       run settings (YAML) and DATA_DIR
-  data.py         loading splits and tokenising
-  train.py        fine-tuning, τ sweep, temperature fitting
-  evaluation.py   metrics and prior adjustment
-  calibration.py  ECE, temperature scaling, routing table
-  bootstrap.py    paired bootstrap
-  predict.py      loading a saved model and classifying texts
-  api.py          FastAPI service
-tests/        predict and API tests
-configs/      roberta_512.yaml (reported run), smoke.yaml (quick check)
-notebooks/    01 EDA, 02 baseline, 03 RoBERTa (Colab), 04 calibration
-figures/      figures used in this README
-```
-
-## Reproduce
-
-Needs Python 3.13, [uv](https://docs.astral.sh/uv/) and Postgres with a `complaints` database. Put `DATABASE_URL` (`postgresql+psycopg://...`) and optionally `DATA_DIR` (default `data/`) in `.env`.
-
-```bash
-uv sync --all-extras                 # or --extra train / db / serve
-scripts/download_narratives.sh       # narrative exports; complaints.csv goes in data/
-scripts/build_db.sh                  # Postgres pipeline
-uv run python scripts/export.py      # train/val/test parquet files into DATA_DIR
-uv run python -m complaint.train --config configs/roberta_512.yaml   # needs a GPU
-uv run python scripts/bootstrap_script.py   # needs data/preds_test.parquet
-```
-
-`bootstrap_script.py` compares against RoBERTa's test predictions, which the "Test set" cell of `notebooks/03_roberta.ipynb` saves; copy `preds_test.parquet` into `data/`.
-
-To check the pipeline quickly on CPU, run training with `configs/smoke.yaml` instead.
-
 ## Serve
 
-A FastAPI service (`src/complaint/api.py`) loads the model once at startup and classifies complaints with the same prior adjustment, temperature and routing threshold as the results above. The model is on the Hugging Face Hub as `leoamullins/complaint-roberta` (private). `MODEL_DIR` can be a local directory or a Hub repo id; by default the service uses `outputs/roberta_512/model` if it exists and the Hub otherwise. For the Hub, log in once with `uv run hf auth login`.
+A FastAPI service (`src/complaint/api.py`) loads the model once at startup and classifies complaints with the same prior adjustment, temperature and routing threshold as the results above. It runs as a [Hugging Face Space](https://huggingface.co/spaces/leoamullins/complaint-triage), with a simple page at `/` and interactive API docs at `/docs`.
+
+The model is on the Hugging Face Hub as [`leoamullins/complaint-roberta`](https://huggingface.co/leoamullins/complaint-roberta) (private). `MODEL_DIR` can be a local directory or a Hub repo id; by default the service uses `outputs/roberta_512/model` if it exists and the Hub otherwise. For the Hub, log in once with `uv run hf auth login`.
 
 ```bash
 uv sync --extra serve
@@ -141,8 +127,6 @@ docker run --rm -p 8000:8000 \
 
 To use a local copy instead, mount it and point `MODEL_DIR` at it: `-v "$PWD/outputs/roberta_512/model:/model:ro" -e MODEL_DIR=/model`.
 
-On Linux, uv installs the CPU-only build of torch (see `[tool.uv.sources]` in `pyproject.toml`), which keeps the image small. Training on a Linux GPU machine with uv needs that source removed; Colab installs torch itself and is unaffected.
-
 `POST /classify` takes 1 to 64 texts and returns one result per text, in order:
 
 ```bash
@@ -158,6 +142,53 @@ curl -X POST http://127.0.0.1:8000/classify \
           {"product": "Personal/payday loan", "probability": 0.01}]}]}
 ```
 
-`route` is `human` when confidence is below the 0.80 threshold, and `top` lists the three most likely products. `GET /health` returns the class labels. A simple page at `/` classifies one complaint at a time, and interactive API docs are at `/docs`.
+`route` is `human` when confidence is below the 0.80 threshold, and `top` lists the three most likely products. `GET /health` returns the class labels.
 
-Tests: `uv run pytest`, also run by GitHub Actions on every push. The model tests skip if the model is not available; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.
+**Tests:** `uv run pytest`, also run by GitHub Actions on every push. The model tests skip if the model is not available; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.
+
+**CPU-only torch on Linux:** uv installs the CPU build of torch on Linux (see `[tool.uv.sources]` in `pyproject.toml`), which keeps the image at 386 MB. Training on a Linux GPU machine with uv needs that source removed; Colab installs torch itself and is unaffected.
+
+## Reproduce
+
+Needs Python 3.13, [uv](https://docs.astral.sh/uv/) and Postgres with a `complaints` database. Put `DATABASE_URL` (`postgresql+psycopg://...`) and optionally `DATA_DIR` (default `data/`) in `.env`.
+
+```bash
+uv sync --all-extras                 # or --extra train / db / serve
+scripts/download_narratives.sh       # narrative exports; complaints.csv goes in data/
+scripts/build_db.sh                  # Postgres pipeline
+uv run python scripts/export.py      # train/val/test parquet files into DATA_DIR
+uv run python -m complaint.train --config configs/roberta_512.yaml   # needs a GPU
+uv run python scripts/bootstrap_script.py   # needs data/preds_test.parquet
+```
+
+`bootstrap_script.py` compares against RoBERTa's test predictions in `data/preds_test.parquet`, with columns `complaint_id, text, label, pred_raw, pred`. Build it by running `complaint.predict` over `test.parquet`; an older copy saved by `notebooks/03_roberta.ipynb` before commit `2893d41` has its `pred` column out of row order and gives a macro-F1 near 0.10.
+
+To check the pipeline quickly on CPU, run training with `configs/smoke.yaml` instead.
+
+## Status
+
+Done: data pipeline, baseline, fine-tuned classifier, calibration and routing, inference API, Docker image, CI and a hosted demo. Next: discovering emerging issues in the complaints over time and turning the findings into recommendations.
+
+## Repo layout
+
+```text
+sql/            Postgres pipeline, run in order by scripts/build_db.sh
+scripts/        database build, sample export, bootstrap test
+src/complaint/
+  config.py       run settings (YAML) and DATA_DIR
+  data.py         loading splits and tokenising
+  train.py        fine-tuning, τ sweep, temperature fitting
+  evaluation.py   metrics and prior adjustment
+  calibration.py  ECE, temperature scaling, routing table
+  bootstrap.py    paired bootstrap
+  predict.py      loading a saved model and classifying texts
+  api.py          FastAPI service
+  static/         the demo page served at /
+tests/          predict and API tests
+configs/        roberta_512.yaml (reported run), smoke.yaml (quick check)
+notebooks/      01 EDA, 02 baseline, 03 RoBERTa (Colab), 04 calibration
+figures/        figures used in this README
+space/          README for the Hugging Face Space
+Dockerfile      serving image
+.github/        CI workflow
+```

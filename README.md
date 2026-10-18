@@ -122,21 +122,26 @@ To check the pipeline quickly on CPU, run training with `configs/smoke.yaml` ins
 
 ## Serve
 
-A FastAPI service (`src/complaint/api.py`) loads the model once at startup and classifies complaints with the same prior adjustment, temperature and routing threshold as the results above. It reads the model from `MODEL_DIR`, by default `outputs/roberta_512/model`.
+A FastAPI service (`src/complaint/api.py`) loads the model once at startup and classifies complaints with the same prior adjustment, temperature and routing threshold as the results above. The model is on the Hugging Face Hub as `leoamullins/complaint-roberta` (private). `MODEL_DIR` can be a local directory or a Hub repo id; by default the service uses `outputs/roberta_512/model` if it exists and the Hub otherwise. For the Hub, log in once with `uv run hf auth login`.
 
 ```bash
 uv sync --extra serve
 uv run uvicorn complaint.api:app --reload
 ```
 
-Or in Docker, with the model mounted from the host rather than built into the image:
+Or in Docker. The image downloads the model from the Hub on startup, so it needs a token; the named volume keeps the download between runs:
 
 ```bash
 docker build -t complaint-triage .
 docker run --rm -p 8000:8000 \
-  -v "$PWD/outputs/roberta_512/model:/model:ro" \
+  -e HF_TOKEN="$(cat ~/.cache/huggingface/token)" \
+  -v hf-cache:/root/.cache/huggingface \
   complaint-triage
 ```
+
+To use a local copy instead, mount it and point `MODEL_DIR` at it: `-v "$PWD/outputs/roberta_512/model:/model:ro" -e MODEL_DIR=/model`.
+
+On Linux, uv installs the CPU-only build of torch (see `[tool.uv.sources]` in `pyproject.toml`), which keeps the image small. Training on a Linux GPU machine with uv needs that source removed; Colab installs torch itself and is unaffected.
 
 `POST /classify` takes 1 to 64 texts and returns one result per text, in order:
 
@@ -152,4 +157,4 @@ curl -X POST http://127.0.0.1:8000/classify \
 
 `route` is `human` when confidence is below the 0.80 threshold. `GET /health` returns the class labels, and interactive docs are at `/docs`.
 
-Tests: `uv run pytest`. The model tests skip if the model is not downloaded; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.
+Tests: `uv run pytest`, also run by GitHub Actions on every push. The model tests skip if the model is not available; `tests/test_predict.py` also checks accuracy on 500 test complaints against the reported run.

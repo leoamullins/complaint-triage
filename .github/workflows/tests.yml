@@ -1,0 +1,15 @@
+name: tests
+
+on: push
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --extra serve
+      # tests that need the model skip here: there is no local copy and no Hub token
+      - run: uv run pytest -v

@@ -8,7 +8,13 @@ from pydantic import BaseModel, Field
 from complaint.config import REPO_ROOT
 from complaint.predict import load, predict
 
-MODEL_DIR = os.environ.get("MODEL_DIR", REPO_ROOT / "outputs" / "roberta_512" / "model")
+HUB_MODEL = "leoamullins/complaint-roberta"
+LOCAL_MODEL = REPO_ROOT / "outputs" / "roberta_512" / "model"
+
+# a local directory or a Hub repo id; defaults to the local copy if it has been downloaded
+MODEL_DIR = os.environ.get("MODEL_DIR") or (
+    str(LOCAL_MODEL) if LOCAL_MODEL.is_dir() else HUB_MODEL
+)
 
 state = {}
 

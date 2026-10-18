@@ -2,11 +2,14 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from huggingface_hub import get_token
 
 from complaint.api import MODEL_DIR, app
 
+# the Hub repo is private, so without a local copy the tests need a token
 pytestmark = pytest.mark.skipif(
-    not Path(MODEL_DIR).exists(), reason=f"needs the model in {MODEL_DIR}"
+    not (Path(MODEL_DIR).is_dir() or get_token()),
+    reason=f"needs the model in {MODEL_DIR} or a Hugging Face token",
 )
 
 

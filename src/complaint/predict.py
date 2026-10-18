@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import torch
+from huggingface_hub import snapshot_download
 from scipy.special import softmax
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -36,8 +38,12 @@ def postprocess(logits, log_ratio, tau, temperature, threshold):
 
 def load(model_dir, device=None):
     """
-    read a saved model directory into a Model
+    read a saved model into a Model, from a local directory or a Hugging Face
+    Hub repo id such as leoamullins/complaint-roberta
     """
+    if not Path(model_dir).is_dir():
+        # downloads once into the Hugging Face cache, then reuses it
+        model_dir = snapshot_download(str(model_dir))
     if device is None:
         device = "mps" if torch.backends.mps.is_available() else "cpu"
 

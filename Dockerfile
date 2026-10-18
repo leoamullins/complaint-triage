@@ -13,7 +13,7 @@ COPY src ./src
 RUN uv sync --frozen --no-dev --extra serve
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    MODEL_DIR=/model
+    MODEL_DIR=leoamullins/complaint-roberta
 
 EXPOSE 8000
 CMD ["uvicorn", "complaint.api:app", "--host", "0.0.0.0", "--port", "8000"]
